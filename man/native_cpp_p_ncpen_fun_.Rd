@@ -4,8 +4,9 @@
 \alias{native_cpp_p_ncpen_fun_}
 \title{Native point ncpen function.}
 \usage{
-native_cpp_p_ncpen_fun_(y_vec, x_mat, b_vec, w_vec, lam, gam, tau, iter_max,
-  b_eps, k_eps, p_eff, r_eff, family, penalty)
+native_cpp_p_ncpen_fun_(y_vec, x_mat, b_vec, w_vec, lam, gam, tau, alp,
+  iter_max, qiter_max, qiiter_max, b_eps, k_eps, p_eff, cut, c_eps, family,
+  penalty)
 }
 \arguments{
 \item{y_vec}{.}
@@ -22,7 +23,13 @@ native_cpp_p_ncpen_fun_(y_vec, x_mat, b_vec, w_vec, lam, gam, tau, iter_max,
 
 \item{tau}{.}
 
+\item{alp}{.}
+
 \item{iter_max}{.}
+
+\item{qiter_max}{.}
+
+\item{qiiter_max}{.}
 
 \item{b_eps}{.}
 
@@ -30,7 +37,9 @@ native_cpp_p_ncpen_fun_(y_vec, x_mat, b_vec, w_vec, lam, gam, tau, iter_max,
 
 \item{p_eff}{.}
 
-\item{r_eff}{.}
+\item{cut}{.}
+
+\item{c_eps}{.}
 
 \item{family}{.}
 

@@ -12,17 +12,17 @@
 #' TRUE if same base, FALSE otherwise.
 #'
 same.base = function(base.cols, a, b) {
-     if(a==b) return(T);
-     if(is.null(base.cols)) return (F);
+     if(a==b) return(TRUE);
+     if(is.null(base.cols)) return (FALSE);
 
      for(base in base.cols) {
           index = regexpr(base, c(a, b));
           if(index[1] > 0 & index[1] == index[2]) {
-               return (T);
+               return (TRUE);
           }
      }
 
-     return (F);
+     return (FALSE);
 }
 # same.base("aa", "aa", "aa20")
 # same.base(NULL, "aa", "aa")
@@ -85,7 +85,7 @@ excluded = function(excluded.pair, a, b) {
 #'  only when the \code{type} variable is set to \code{"exclude.base"}.
 #' @param prefix a prefix to be used for column names of the output matrix.
 #' Default is "cat_" if \code{prefix} is \code{NULL}.
-#' For example, if a category vector has values of c("a", "b", "c"),
+#' For example, if a category vector has values of c("aa", "bb", "cc"),
 #' column names of the output matrix will be "cat_aa", "cat_bb" and "cat_cc".
 #' If \code{vec} is a \code{\link{data.frame}} and \code{prefix} is \code{NULL},
 #' then the \code{vec}'s column name followed by "_" will be used as a prefix.
@@ -127,7 +127,8 @@ to.indicators = function(vec, exclude.base = TRUE, base = NULL, prefix = NULL) {
 
      if(exclude.base == TRUE) {
           if(is.null(base)) {
-               return (model.matrix(~ . + 0, data = vec)[,-1]);
+               ret = model.matrix(~ . + 0, data = vec)[, -1];
+               # return (model.matrix(~ . + 0, data = vec)[,-1]);
           } else {
                ret = model.matrix(~ . + 0, data = vec)[,];
                rm.col = which(colnames(ret)==paste(prefix, base, sep = ""));
@@ -135,11 +136,21 @@ to.indicators = function(vec, exclude.base = TRUE, base = NULL, prefix = NULL) {
                     ret = ret[, -rm.col];
                }
 
-               return (ret);
+               # return (ret);
           }
      } else {
-          return (model.matrix(~ . + 0, data = vec)[,]);
+          ret = model.matrix(~ . + 0, data = vec)[,];
+          # return (model.matrix(~ . + 0, data = vec)[,]);
      }
+
+     # if vec has only two categories, model.matrix return a vector without column names.
+     # so convert it to matrixk and give column name
+     if(is.vector(ret)) {
+          ret = as.data.frame(ret);
+          colnames(ret) = prefix;
+     }
+
+     return (ret);
 }
 
 # a1 = 4:10;
@@ -241,6 +252,138 @@ interact.data = function(data, base.cols = NULL, exclude.pair = NULL) {
      interact.str = substr(interact.str, 1, nchar(interact.str)-2); # truncate the last "+".
      # print(interact.str);
      return (model.matrix(formula(interact.str), data = as.data.frame(data))[,-1]);
+}
+
+#' @title
+#' Convert a \code{\link{data.frame}} to a \code{ncpen} usable \code{\link{matrix}}.
+#'
+#' @description
+#' This automates the processes of \code{\link{to.indicators}} and \code{\link{interact.data}}.
+#' First, it converts categorical variables to a series of indicators.
+#' All other numerical and logical variables are preserved.
+#' Then, if \code{interact.all == TRUE}, all the variables are interacted.
+#'
+#' @param df a \code{\link{data.frame}} which includes numerical, logical and categorical columns.
+#' @param base a base category removed from the indicator variables. This \code{base} will work as the
+#' base case for all the categorical variables.
+#' @param interact.all indicates whether to interact all the columns (\code{TRUE}) or not (\code{FALSE}).
+#' @param base.cols indicates columns derived from a same column. For example, if \code{age_sq} is \code{age^2},
+#' then \code{"age"} is a base column. Categorical columns will be automatically considered as base columns.
+#' @param exclude.pair the pairs will be excluded from interactions. This should be a \code{\link{list}} object of pairs.
+#' For example, \code{list(c("a1", "a2"), c("d1", "d2"))}.
+#'
+#' @return
+#' This returns an object of \code{\link{matrix}}.
+#'
+#'
+#' @examples
+#' df = data.frame(num = c(1, 2, 3, 4, 5),
+#'                 ctr = c("K", "O", "R", "R", "K"),
+#'                 logi = c(TRUE, TRUE, FALSE, FALSE, TRUE),
+#'                 age = c(10, 20, 30, 40, 50),
+#'                 age_sq = c(10, 20, 30, 40, 50)^2,
+#'                 loc = c("b", "a", "c", "a", "b"),
+#'                 FTHB = c(1,0,1,0,1),
+#'                 PRM  = c(0,1,0,1,0),
+#'                 PMI  = c(1,1,0,0,0));
+#'
+#' to.ncpen.x.mat(df, interact.all = TRUE,
+#'    base.cols = c("age"),
+#'    exclude.pair = list(c("FTHB", "PRM")));
+#'
+#'
+#'
+#' @export
+to.ncpen.x.mat = function(df, base = NULL, interact.all = FALSE, base.cols = NULL, exclude.pair  = NULL) {
+     # prepay.data = read.csv(file = "https://raw.githubusercontent.com/zeemkr/data/master/mtg_term_2011_2012.csv");
+     # head(prepay.data);
+     # df = prepay.data[, 3:ncol(prepay.data)];
+     # head(df);
+     # df$logic = T;
+     # interract.all = T;
+     # base.cols = NULL; # c("CHANNEL", "loan_age");
+     # exclude.pair = list(c("FTHB", "Purchase"), c("FTHB", "Primary"));
+
+     raw.colnames = colnames(df);
+     buff = NULL;
+     for(i in 1:ncol(df)) {
+          # i = 16;
+          if(is.numeric(df[,i]) | is.logical(df[,i])) {
+               buff = cbind(buff, df[,i]);
+               colnames(buff)[ncol(buff)] = raw.colnames[i];
+          } else if(is.factor(df[,i]) | is.character(df[,i]) ) {
+               idcs = to.indicators(df[, i], exclude.base = TRUE, base = base, prefix = paste(raw.colnames[i], "_", sep = ""));
+               if(is.vector(idcs)) {
+
+               }
+               buff = cbind(buff, idcs);
+               base.cols = c(base.cols, raw.colnames[i]);
+          }
+     }
+
+     # remove duplicated base cols.
+     base.cols = base.cols[!duplicated(base.cols)];
+
+     if(interact.all == TRUE) {
+          buff = cbind(buff, interact.data(buff, base.cols, exclude.pair));
+     }
+
+     return (as.matrix(buff));
+}
+
+
+#' @title
+#' Create ncpen Data Structure Using a Formula
+#'
+#'
+#' @description
+#' This function creates ncpen y \code{vector} and x \code{matrix} from data using formula.
+#'
+#' @param formula (formula) regression formula. Intercept will not be created.
+#' @param data (numeric matrix or data.frame) contains both y and X.
+#'
+#'
+#' @return List of y vector and x matrix.
+#'   \item{y.vec}{y \code{vector}}
+#'   \item{x.mat}{x \code{matrix}}
+#'
+#' @author Dongshin Kim, Sunghoon Kwon, Sangin Lee
+#'
+#'
+#' @examples
+#' data = data.frame(y = 1:5, x1 = 6:10, x2 = 11:15);
+#' formula = log(y) ~ log(x1) + x2;
+#' make.ncpen.data(formula, data);
+#'
+#' @export
+make.ncpen.data = function(formula, data) {
+     # compse y.vec and x.mat ---------------------------------
+     # formula = log(y) ~ log(x1) + x2;
+     # formula = y ~ .;
+     # data = data.frame(y = 1:5, x1 = 6:10, x2 = 11:15);
+
+     data = data[, all.vars(formula)];
+     complete.ids = complete.cases(data);
+     if(sum(!complete.ids) >0 ) {
+          data = data[complete.ids, ];
+          warning(paste(sum(!complete.ids), " observations deleted due to missingness", sep = ""));
+     }
+
+     if(!is.data.frame(data)) {
+          data = data.frame(data);
+     }
+
+     formula.str = as.character(formula);
+     y.var = as.formula(paste("~", formula.str[2]));
+     y.vec = model.matrix(y.var, data);
+     y.vec = y.vec[, 2]; # exclude intercept
+
+     x.var = as.formula(paste(formula.str[2], "~", formula.str[3]));
+     x.mat = model.matrix(x.var, data);
+     x.mat = x.mat[, 2:ncol(x.mat)]; # exclude intercept
+     #---------------------------------------------------------
+
+     return(list(y.vec = y.vec, x.mat = x.mat));
 }
 
 # df = data.frame(1:3, 4:6, 7:9, 10:12, 13:15);

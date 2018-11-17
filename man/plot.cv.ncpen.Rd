@@ -2,41 +2,40 @@
 % Please edit documentation in R/ncpen_cpp_wrap.R
 \name{plot.cv.ncpen}
 \alias{plot.cv.ncpen}
-\title{Plot cv curve from a \code{cv.ncpen} object}
+\title{plot.cv.ncpen: plot cross-validation error curve.}
 \usage{
-\method{plot}{cv.ncpen}(x, type = c("error", "deviance"), log.scale = FALSE,
+\method{plot}{cv.ncpen}(x, type = c("rmse", "like"), log.scale = FALSE,
   ...)
 }
 \arguments{
 \item{x}{fitted \code{cv.ncpen} object.}
 
-\item{type}{(character) a cross-validated error type which is either "error" or "deviance". Each error type is defined in \code{\link{cv.ncpen}}.}
+\item{type}{(character) a cross-validated error type which is either \code{rmse} or \code{like}.}
 
-\item{log.scale}{(logical) log scale of horizontal axis (a sequence of lambda values). Default value is FALSE.}
+\item{log.scale}{(logical) whether to use log scale of lambda for horizontal axis.}
 
-\item{...}{other graphical parameters to \code{plot}.}
+\item{...}{other graphical parameters to \code{\link{plot}}}
 }
 \description{
-Produces a plot of the cross-validated error curve from a fitted \code{cv.ncpen} object.
+The function Produces a plot of the cross-validated errors from \code{cv.ncpen} object.
 }
 \examples{
-
-s0 = sam.gen.fun(n=100,p=20,q=10,bmin=0.5,bmax=1,corr=0.5,family="binomial")
-x.mat = s0$x.mat
-y.vec = s0$y.vec
-
-cvfit = cv.ncpen(y.vec=y.vec, x.mat=x.mat, family="binomial")
-plot.cv.ncpen(cvfit, type="deviance")
+### linear regression with scad penalty
+par(mfrow=c(1,2))
+sam =  sam.gen.ncpen(n=500,p=10,q=5,cf.min=0.5,cf.max=1,corr=0.5,family="gaussian")
+x.mat = sam$x.mat; y.vec = sam$y.vec
+fit = cv.ncpen(y.vec=y.vec,x.mat=x.mat,n.lambda=50,family="gaussian", penalty="scad")
+plot(fit)
+plot(fit,log.scale=F)
 
 }
 \references{
-Kwon, S., Lee, S. and Kim, Y. (2016). Moderately clipped LASSO. \emph{Computational Statistics and Data Analysis}, \bold{92C}, 53-67.
+Lee, S., Kwon, S. and Kim, Y. (2016). A modified local quadratic approximation algorithm for penalized optimization problems.
+\emph{Computational Statistics and Data Analysis}, 94, 275-286.
 }
 \seealso{
-\code{\link{cv.ncpen}}, \code{\link{coef.cv.ncpen}}
+\code{\link{cv.ncpen}}
 }
 \author{
 Dongshin Kim, Sunghoon Kwon, Sangin Lee
-
-Maintainer: Dongshin Kim<dongshin.kim@outlook.com>, Sunghoon Kwon<shkwon0522@gmail.com>
 }

@@ -2,105 +2,150 @@
 % Please edit documentation in R/ncpen_cpp_wrap.R
 \name{cv.ncpen}
 \alias{cv.ncpen}
-\title{Cross-validation for ncpen}
+\title{cv.ncpen: cross validation for \code{ncpen}}
 \usage{
-cv.ncpen(y.vec, x.mat, family = c("gaussian", "binomial", "poisson"),
-  penalty = c("scad", "mcp", "tlp", "lasso", "classo", "sridge", "mbridge",
-  "mlog"), n.fold = 10, lambda = NULL, n.lambda = 100, r.lambda = 0.001,
-  pen.weight = NULL, tau = switch(penalty, scad = 3.7, mcp = 3, tlp = 0.1,
-  lasso = 1, classo = 2, sridge = 2, mbridge = 0.1, mlog = 0.1),
-  gamma = 1e-06, ridge = 1e-06, df.max = 50, proj.min = 50,
-  iter.max = 1000, b.eps = 1e-07, k.eps = 1e-06, x.standardize = TRUE,
-  intercept = TRUE)
+cv.ncpen(y.vec, x.mat, family = c("gaussian", "linear", "binomial",
+  "logit", "poisson", "multinomial", "cox"), penalty = c("scad", "mcp",
+  "tlp", "lasso", "classo", "ridge", "sridge", "mbridge", "mlog"),
+  x.standardize = TRUE, intercept = TRUE, lambda = NULL,
+  n.lambda = NULL, r.lambda = NULL, w.lambda = NULL, gamma = NULL,
+  tau = NULL, alpha = NULL, df.max = 50, cf.max = 100,
+  proj.min = 10, add.max = 10, niter.max = 30, qiter.max = 10,
+  aiter.max = 100, b.eps = 1e-06, k.eps = 1e-04, c.eps = 1e-06,
+  cut = TRUE, local = FALSE, local.initial = NULL, n.fold = 10,
+  fold.id = NULL)
 }
 \arguments{
-\item{y.vec}{(numeric vector) response vector.}
+\item{y.vec}{(numeric vector) response vector.
+Must be 0,1 for \code{binomial} and 1,2,..., for \code{multinomial}.}
 
-\item{x.mat}{(numeric matrix) design matrix. Each row is an observation vector.}
+\item{x.mat}{(numeric matrix) design matrix without intercept.
+The censoring indicator must be included at the last column of the design matrix for \code{cox}.}
 
-\item{family}{(character) regression model. Default is "\code{gaussian}".}
+\item{family}{(character) regression model. Supported models are
+\code{gaussian} (or \code{linear}),
+\code{binomial} (or \code{logit}),
+\code{poisson},
+\code{multinomial},
+and \code{cox}.
+Default is \code{gaussian}.}
 
-\item{penalty}{(character) penalty function. Default is "\code{scad}".}
+\item{penalty}{(character) penalty function.
+Supported penalties are
+\code{scad} (smoothly clipped absolute deviation),
+\code{mcp} (minimax concave penalty),
+\code{tlp} (truncated LASSO penalty),
+\code{lasso} (least absolute shrinkage and selection operator),
+\code{classo} (clipped lasso = mcp + lasso),
+\code{ridge} (ridge),
+\code{sridge} (sparse ridge = mcp + ridge),
+\code{mbridge} (modified bridge) and
+\code{mlog} (modified log).
+Default is \code{scad}.}
 
-\item{n.fold}{(numeric) the number of folds. Default value is 10. It should be 3 or greater.}
+\item{x.standardize}{(logical) whether to standardize \code{x.mat} prior to fitting the model (see details).
+The estimated coefficients are always restored to the original scale.}
 
-\item{lambda}{(numeric vector): user-specified sequence of \code{lambda} values.}
+\item{intercept}{(logical) whether to include an intercept in the model.}
 
-\item{n.lambda}{(numeric) the number of \code{lambda} values. Default is 100.}
+\item{lambda}{(numeric vector) user-specified sequence of \code{lambda} values.
+Default is supplied automatically from samples.}
 
-\item{r.lambda}{(numeric) ratio of the smallest value for \code{lambda} to \code{lambda.max} (which derived from data) for which all coefficients are zero. Default is 1e-3.}
+\item{n.lambda}{(numeric) the number of \code{lambda} values.
+Default is 100.}
 
-\item{pen.weight}{(numeric vector) penalty weights for each coefficient. If a penalty weight is set to zero,
-the corresponding coefficient is always non-zero without shrinkage.
-Note: the penalty weights are internally rescaled to sum to the number of variables, and the \code{lambda} sequence reflects this change.}
+\item{r.lambda}{(numeric) ratio of the smallest \code{lambda} value to largest.
+Default is 0.001 when n>p, and 0.01 for other cases.}
 
-\item{tau}{(numeric) concavity parameter of the concave penalties (see reference). Default is 3.7 for \code{scad}, 3 for \code{mcp}, 2 for \code{classo} and \code{sridge}, 0.1 for \code{tlp}, \code{mbridge} and \code{mlog}.}
+\item{w.lambda}{(numeric vector) penalty weights for each coefficient (see references).
+If a penalty weight is set to 0, the corresponding coefficient is always nonzero.}
 
-\item{gamma}{(numeric) additional tuning parameter for the \code{classo} and \code{sbridge}. Default value is 1e-6.}
+\item{gamma}{(numeric) additional tuning parameter for controlling shrinkage effect of \code{classo} and \code{sridge} (see references).
+Default is half of the smallest \code{lambda}.}
 
-\item{ridge}{(numeric) ridge effect (amount of ridge penalty). Default value is 1e-6.}
+\item{tau}{(numeric) concavity parameter of the penalties (see reference).
+Default is 3.7 for \code{scad}, 2.1 for \code{mcp}, \code{classo} and \code{sridge}, 0.001 for \code{tlp}, \code{mbridge} and \code{mlog}.}
 
-\item{df.max}{(numeric) the maximum number of nonzero coefficients. Default is 50.}
+\item{alpha}{(numeric) ridge effect (weight between the penalty and ridge penalty) (see details).
+Default value is 1. If penalty is \code{ridge} and \code{sridge} then \code{alpha} is set to 0.}
 
-\item{proj.min}{(numeric) the minimum number of iterations which will be applied to projections (see details). Default value is 50.}
+\item{df.max}{(numeric) the maximum number of nonzero coefficients.}
 
-\item{iter.max}{(numeric) maximum number of iterations. Default value is 1e+3.}
+\item{cf.max}{(numeric) the maximum of absolute value of nonzero coefficients.}
 
-\item{b.eps}{(numeric) convergence threshold for \eqn{L2} norms of coefficients vector. Default value is 1e-7.}
+\item{proj.min}{(numeric) the projection cycle inside CD algorithm (largely internal use. See details).}
 
-\item{k.eps}{(numeric) convergence threshold for KKT conditions. Default value is 1e-6.}
+\item{add.max}{(numeric) the maximum number of variables added in CCCP iterations (largely internal use. See references).}
 
-\item{x.standardize}{(logical) whether to standardize the \code{x.mat} prior to fitting the model.
-The estimated coefficients are always restored to the original scale. Default value is \code{TRUE}.}
+\item{niter.max}{(numeric) maximum number of iterations in CCCP.}
 
-\item{intercept}{(logical) whether to include an intercept in the model. Default value is \code{TRUE}.}
+\item{qiter.max}{(numeric) maximum number of quadratic approximations in each CCCP iteration.}
 
-\item{...}{other parameters are same as in \code{\link{ncpen}}.}
+\item{aiter.max}{(numeric) maximum number of iterations in CD algorithm.}
+
+\item{b.eps}{(numeric) convergence threshold for coefficients vector.}
+
+\item{k.eps}{(numeric) convergence threshold for KKT conditions.}
+
+\item{c.eps}{(numeric) convergence threshold for KKT conditions (largely internal use).}
+
+\item{cut}{(logical) convergence threshold for KKT conditions  (largely internal use).}
+
+\item{local}{(logical) whether to use local initial estimator for path construction. It may take a long time.}
+
+\item{local.initial}{(numeric vector) initial estimator for \code{local=TRUE}.}
+
+\item{n.fold}{(numeric) number of folds for CV.}
+
+\item{fold.id}{(numeric vector) fold ids from 1 to k that indicate fold configuration.}
 }
 \value{
 An object with S3 class \code{cv.ncpen}.
-  \item{ncpen.fit}{the fitted \code{ncpen} object.}
-  \item{opt.ebeta}{the optimal coefficients vector selected by using the squared-error loss in the cross-validation.}
-  \item{opt.dbeta}{the optimal coefficients vector selected by using the deviance loss in the cross-validation.}
-  \item{cv.error}{the averaged cross-validated error for each value of \code{lambda}s.}
-  \item{cv.deviance}{the averaged cross-validated deviance for each value of \code{lambda}s.}
-  \item{elambda}{the \code{lambda} sequence used for computing cv error.}
-  \item{dlambda}{the \code{lambda} sequence used for computing cv deviance.}
-  \item{opt.elambda}{the optimal value of \code{lambda} based on cv error.}
-  \item{opt.dlambda}{the optimal value of \code{lambda} based on cv deviance.}
+  \item{ncpen.fit}{ncpen object fitted from the whole samples.}
+  \item{fold.index}{fold ids of the samples.}
+  \item{rmse}{rood mean squared errors from CV.}
+  \item{like}{negative log-likelihoods from CV.}
+  \item{lambda}{sequence of \code{lambda} used for CV.}
 }
 \description{
-Performs k-fold cross-validation for nonconvex penalized regression models over a sequence of the regularization parameter lambda.
+performs k-fold cross-validation (CV) for nonconvex penalized regression models
+over a sequence of the regularization parameter \code{lambda}.
 }
 \details{
-The function runs the \code{ncpen} function for \code{n.fold+1} times.
-The first run is to get the sequence of \code{lambda} and then the rest runs are to compute the fit with each of the folds omitted. It provides the cross validated-error based on the squared-error loss and the deviance loss.
+Two kinds of CV errors are returned: root mean squared error and negative log likelihood.
+The results depends on the random partition made internally.
+To choose an optimal coefficients form the cv results, use \code{\link{coef.cv.ncpen}}.
+\code{ncpen} does not search values of \code{gamma}, \code{tau} and \code{alpha}.
 }
 \examples{
-s0 = sam.gen.fun(n=100,p=20,q=10,bmin=0.5,bmax=1,corr=0.5,family="gaussian", seed = 1234)
-x.mat = s0$x.mat
-y.vec = s0$y.vec
-
-cvfit = cv.ncpen(y.vec=y.vec,x.mat=x.mat,family="gaussian",n.fold=10)  # not run !!!
-coef.cv.ncpen(cvfit)
-plot.cv.ncpen(cvfit)
-fit = cvfit$ncpen.fit
-opt = which(cvfit$opt.elambda==fit$lambda)
-coef(fit)[,opt]
+### linear regression with scad penalty
+sam =  sam.gen.ncpen(n=200,p=10,q=5,cf.min=0.5,cf.max=1,corr=0.5,family="gaussian")
+x.mat = sam$x.mat; y.vec = sam$y.vec
+fit = cv.ncpen(y.vec=y.vec,x.mat=x.mat,n.lambda=10,family="gaussian", penalty="scad")
+coef(fit)
 
 }
 \references{
-Kwon, S., Lee, S. and Kim, Y. (2016). Moderately clipped LASSO. \emph{Computational Statistics and Data Analysis}, \bold{92C}, 53-67.
-
-Lee, S., Kwon, S. and Kim, Y. (2016). A modified local quadratic approximation algorithm for penalized optimization problems. \emph{Computational Statistics and Data Analysis}, \bold{94}, 275-286.
-
-Choi, H., Kim, Y. and Kwon, S. (2013). Sparse bridge estimation with a diverging number of parameters. \emph{Statistics and Its Interface}, \bold{6}, 231-242.
+Fan, J. and Li, R. (2001). Variable selection via nonconcave penalized likelihood and its oracle properties.
+\emph{Journal of the American statistical Association}, 96, 1348-60.
+Zhang, C.H. (2010). Nearly unbiased variable selection under minimax concave penalty.
+\emph{The Annals of statistics}, 38(2), 894-942.
+Shen, X., Pan, W., Zhu, Y. and Zhou, H. (2013). On constrained and regularized high-dimensional regression.
+\emph{Annals of the Institute of Statistical Mathematics}, 65(5), 807-832.
+Kwon, S., Lee, S. and Kim, Y. (2016). Moderately clipped LASSO.
+\emph{Computational Statistics and Data Analysis}, 92C, 53-67.
+Kwon, S. Kim, Y. and Choi, H.(2013). Sparse bridge estimation with a diverging number of parameters.
+\emph{Statistics and Its Interface}, 6, 231-242.
+Huang, J., Horowitz, J.L. and Ma, S. (2008). Asymptotic properties of bridge estimators in sparse high-dimensional regression models.
+\emph{The Annals of Statistics}, 36(2), 587-613.
+Zou, H. and Li, R. (2008). One-step sparse estimates in nonconcave penalized likelihood models.
+\emph{Annals of statistics}, 36(4), 1509.
+Lee, S., Kwon, S. and Kim, Y. (2016). A modified local quadratic approximation algorithm for penalized optimization problems.
+\emph{Computational Statistics and Data Analysis}, 94, 275-286.
 }
 \seealso{
-\code{\link{ncpen}}, \code{\link{plot.cv.ncpen}}, \code{\link{coef.cv.ncpen}}
+\code{\link{plot.cv.ncpen}}, \code{\link{coef.cv.ncpen}}, \code{\link{ncpen}}, \code{\link{predict.ncpen}}
 }
 \author{
 Dongshin Kim, Sunghoon Kwon, Sangin Lee
-
-Maintainer: Dongshin Kim<dongshin.kim@outlook.com>, Sunghoon Kwon<shkwon0522@gmail.com>
 }
